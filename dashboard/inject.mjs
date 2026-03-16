@@ -58,6 +58,16 @@ function geoTagText(text) {
   return null;
 }
 
+function sanitizeExternalUrl(raw) {
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // === RSS Fetching ===
 async function fetchRSS(url, source) {
   try {
@@ -69,7 +79,7 @@ async function fetchRSS(url, source) {
     while ((match = itemRegex.exec(xml)) !== null) {
       const block = match[1];
       const title = (block.match(/<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/)?.[1] || '').trim();
-      const link = (block.match(/<link>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/link>/)?.[1] || '').trim();
+      const link = sanitizeExternalUrl((block.match(/<link>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/link>/)?.[1] || '').trim());
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '';
       if (title && title !== source) items.push({ title, date: pubDate, source, url: link || undefined });
     }
@@ -421,7 +431,7 @@ function buildNewsFeed(rssNews, gdeltData, tgUrgent, tgTop) {
       const geo = geoTagText(a.title);
       feed.push({
         headline: a.title.substring(0, 100), source: 'GDELT', type: 'gdelt',
-        timestamp: new Date().toISOString(), region: geo?.region || 'Global', urgent: false, url: a.url
+        timestamp: new Date().toISOString(), region: geo?.region || 'Global', urgent: false, url: sanitizeExternalUrl(a.url)
       });
     }
   }
